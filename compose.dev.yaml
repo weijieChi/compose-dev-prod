@@ -1,0 +1,173 @@
+# ==========================================================
+# Project 06 - Development Compose
+# ==========================================================
+#
+# 這份 Compose 專門用來建立 Development Environment。
+#
+# 核心概念：
+#
+# Host Project
+#      │
+#      │ bind mount
+#      ▼
+# Container /app
+#
+# 所以 Host 上修改：
+#
+# src/
+# tests/
+# package.json
+# tsconfig.json
+# 其他設定檔
+#
+# Container 都可以立即看到。
+#
+# ==========================================================
+
+
+services:
+
+  # --------------------------------------------------------
+  # Node.js API Development Container
+  # --------------------------------------------------------
+  api:
+
+    # ------------------------------------------------------
+    # Build Development Image
+    # ------------------------------------------------------
+    #
+    # 使用目前目錄作為 Docker build context。
+    #
+    # 並明確指定 Dockerfile.dev。
+    #
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+
+
+    # ------------------------------------------------------
+    # Init Process
+    # ------------------------------------------------------
+    #
+    # 在 Container 中加入簡單的 init process。
+    #
+    # 可以協助：
+    #
+    # - signal forwarding
+    # - child process 回收
+    #
+    # 對：
+    #
+    # npm
+    #  ↓
+    # tsx watch
+    #  ↓
+    # node
+    #
+    # 這種 process tree 比較友善。
+    #
+    init: true
+
+
+    # ------------------------------------------------------
+    # Environment Variables
+    # ------------------------------------------------------
+    environment:
+
+      # Application 可以透過：
+      #
+      # process.env.NODE_ENV
+      #
+      # 判斷目前環境。
+      NODE_ENV: development
+
+      # Express HTTP Server port。
+      PORT: "3000"
+
+
+    # ------------------------------------------------------
+    # Port Mapping
+    # ------------------------------------------------------
+    #
+    # 格式：
+    #
+    # Host Port : Container Port
+    #
+    # 所以：
+    #
+    # curl http://localhost:3000
+    #
+    # 會轉送到 Container 的 3000 port。
+    #
+    ports:
+      - "3000:3000"
+
+
+    # ------------------------------------------------------
+    # Development Volumes
+    # ------------------------------------------------------
+    volumes:
+
+      # ====================================================
+      # 1. Project Bind Mount
+      # ====================================================
+      #
+      # 把整個 Host Project：
+      #
+      # ./
+      #
+      # 掛載到：
+      #
+      # /app
+      #
+      # 因此：
+      #
+      # Host ./src/app.ts
+      #
+      # 和
+      #
+      # Container /app/src/app.ts
+      #
+      # 實際上看到的是同一份 Host 檔案。
+      #
+      # VS Code 修改程式碼後，
+      # Container 可以立即看到變更。
+      #
+      - .:/app
+
+
+      # ====================================================
+      # 2. node_modules Named Volume
+      # ====================================================
+      #
+      # 上面的：
+      #
+      # .:/app
+      #
+      # 會遮蔽 Image 原本的整個 /app。
+      #
+      # 包含：
+      #
+      # /app/node_modules
+      #
+      # 所以額外使用 Docker named volume，
+      # 把 Container 專用的 node_modules 保留下來。
+      #
+      # 這樣 dependency 使用的是 Linux Container
+      # 裡面的版本，而不是 Host 的 node_modules。
+      #
+      - node_modules:/app/node_modules
+
+
+# ==========================================================
+# Named Volumes
+# ==========================================================
+#
+# Docker 負責管理這個 volume。
+#
+# 用來保存 Development Container 使用的：
+#
+# /app/node_modules
+#
+volumes:
+  node_modules:

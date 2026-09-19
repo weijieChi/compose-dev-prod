@@ -46,7 +46,7 @@ const PORT = Number(process.env.PORT ?? 3000);
 // 2. 後面觀察 Development / Production 環境差異。
 app.get("/", (_req, res) => {
   res.json({
-    message: "Project 06 - Compose Dev / Prod Lab",
+    message: "Development bind mount works",
 
     // NODE_ENV 後面會由 Docker Compose 傳入。
     //

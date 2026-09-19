@@ -1,46 +1,34 @@
 # ==========================================================
-# Development Image
+# Project 06 - Development Dockerfile
 # ==========================================================
 #
-# 這個 Dockerfile 專門建立「開發環境」。
+# 這個 Image 專門提供 Development Container 使用。
 #
-# 目前目的不是：
+# 主要負責：
 #
-# - Image 最小化
-# - Production 部署
-# - 移除 devDependencies
+# - 固定 Node.js 版本
+# - 安裝 npm dependencies
+# - 安裝 devDependencies
+# - 提供 TypeScript / tsx 等開發工具
 #
-# 而是提供完整且一致的 Node.js / TypeScript
-# 開發環境。
-#
-# 後面會包含：
-#
-# Node.js
-# npm
-# TypeScript
-# tsx
-# @types/*
-# Application dependencies
+# Source Code 在真正開發時，
+# 會由 compose.dev.yaml 使用 bind mount 掛載進 /app。
 #
 # ==========================================================
 
 
 # ----------------------------------------------------------
-# 1. Base Image
+# 1. Node.js Base Image
 # ----------------------------------------------------------
 #
-# 使用官方 Node.js 24 image。
+# 使用 Node.js 24。
 #
 # bookworm-slim：
 #
-# - Debian Bookworm 為基礎
-# - 比完整 Debian Node image 精簡
-# - 又不像 Alpine 使用 musl libc
+# - Debian Bookworm
+# - 比完整 Node image 精簡
+# - 適合作為一般 Node.js 開發環境
 #
-# 對一般 Node.js 開發環境來說相對單純。
-#
-# 這裡固定 Node.js major version，
-# 避免不同工程師使用不同版本的 Node.js。
 FROM node:24-bookworm-slim
 
 
@@ -48,153 +36,85 @@ FROM node:24-bookworm-slim
 # 2. Working Directory
 # ----------------------------------------------------------
 #
-# 設定 Container 內 Application 的工作目錄。
+# Container 裡面的專案工作目錄。
 #
-# 後面的：
+# 後面的 RUN、COPY、CMD 都會以 /app 為基礎。
 #
-# COPY
-# RUN
-# CMD
-#
-# 都會以 /app 為主要工作位置。
-#
-# 如果 /app 不存在，Docker 會自動建立。
 WORKDIR /app
 
 
 # ----------------------------------------------------------
-# 3. Copy npm dependency definitions
+# 3. Copy npm Dependency Files
 # ----------------------------------------------------------
 #
-# 先只 COPY：
+# 先只複製：
 #
 # package.json
 # package-lock.json
 #
-# 而不是直接 COPY 整個專案。
+# 讓 Docker 可以利用 build cache。
 #
-# 這樣可以利用 Docker build cache。
+# 如果只有 src/ 程式碼改變，
+# package-lock.json 沒變，
+# npm ci 這一層就有機會使用 cache。
 #
-# 假設：
-#
-# src/app.ts           ← 有修改
-# package-lock.json    ← 沒修改
-#
-# Docker 就有機會繼續使用之前 npm ci 的 cache layer，
-# 不需要每次修改程式碼都重新下載 dependencies。
 COPY package.json package-lock.json ./
 
 
 # ----------------------------------------------------------
-# 4. Install Dependencies
+# 4. Install Development Dependencies
 # ----------------------------------------------------------
 #
 # npm ci：
 #
-# 依照 package-lock.json 安裝「確切版本」的 dependencies。
+# 根據 package-lock.json 安裝固定版本的套件。
 #
-# 和 npm install 相比，
-# npm ci 更適合：
-#
-# - Docker build
-# - CI
-# - 可重現環境
-#
-# Development Image 需要：
+# Development 需要：
 #
 # dependencies
 # +
 # devDependencies
 #
-# 因此這裡沒有使用：
+# 因此這裡不能使用：
 #
 # npm ci --omit=dev
 #
-# TypeScript、tsx、@types/*
-# 都會一起被安裝。
 RUN npm ci
 
 
 # ----------------------------------------------------------
-# 5. Copy TypeScript configuration
+# 5. Default Development Environment
 # ----------------------------------------------------------
 #
-# 把 TypeScript compiler 設定放進 Image。
-COPY tsconfig.json ./
-
-
-# ----------------------------------------------------------
-# 6. Copy Application Source
-# ----------------------------------------------------------
+# 設定 Development 環境。
 #
-# Step 02 還沒有使用 bind mount。
+# compose.dev.yaml 也會再明確設定一次，
+# 方便直接從 Compose 看出目前環境。
 #
-# 因此現在必須把 src/ COPY 進 Image，
-# Container 才有程式碼可以執行。
-#
-# Step 03 加入 bind mount 後：
-#
-# Host src/
-#    ↓
-# bind mount
-#    ↓
-# Container /app/src/
-#
-# 開發時 Host 的內容就可以覆蓋 / 同步進 Container。
-COPY src ./src
-
-
-# ----------------------------------------------------------
-# 7. Development Environment
-# ----------------------------------------------------------
-#
-# 告訴 Application：
-#
-# 現在是 development environment。
-#
-# 我們在 src/app.ts 裡也會讀取：
-#
-# process.env.NODE_ENV
 ENV NODE_ENV=development
 
 
 # ----------------------------------------------------------
-# 8. Application Port
+# 6. Application Port
 # ----------------------------------------------------------
 #
-# Express Application 使用 3000 port。
+# Express 使用 3000 port。
 #
-# EXPOSE 只是 Image 的 metadata / 文件化資訊，
-# 並不代表 Host 可以直接連進 Container。
+# EXPOSE 只是 Image metadata，
+# 真正 Host → Container port mapping
+# 由 Compose 的 ports 負責。
 #
-# 真正讓 Host port 對應 Container port，
-# 等一下還是要：
-#
-# docker run -p 3000:3000 ...
 EXPOSE 3000
 
 
 # ----------------------------------------------------------
-# 9. Development Startup Command
+# 7. Development Startup Command
 # ----------------------------------------------------------
-#
-# Container 啟動後執行：
-#
-# npm run dev
 #
 # package.json：
 #
 # "dev": "tsx watch src/app.ts"
 #
-# 所以最後實際會啟動：
+# Container 啟動後執行 Development Server。
 #
-# tsx watch
-#
-# 注意：
-#
-# Step 02 的 src 是 docker build 時 COPY 進去的。
-# 因此現在修改 Host src/app.ts，
-# Container 還看不到。
-#
-# Step 03 才會透過 bind mount 解決這件事。
 CMD ["npm", "run", "dev"]
