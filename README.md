@@ -25,3 +25,136 @@ Development Container
       └── npm run dev
             │
             └── tsx watch
+```
+
+Production：
+
+```text
+Source Code
+     │
+     ▼
+Docker Build
+     │
+     ├── npm ci
+     ├── npm run build
+     │
+     ▼
+   dist/
+     │
+     ▼
+Production Image
+     │
+     └── node dist/app.js
+```
+
+## Development / Production Workflow
+
+### Development
+
+Development uses:
+
+- `Dockerfile.dev`
+- `compose.dev.yaml`
+- source bind mounts
+- Docker-managed `node_modules`
+- `tsx watch`
+
+Flow:
+
+```text
+VS Code
+  ↓
+Linux workspace
+  ↓ bind mount
+Development Container
+  ↓
+tsx watch
+  ↓
+Node.js
+````
+
+Start:
+
+```bash
+docker compose -f compose.dev.yaml up --build
+```
+
+Stop:
+
+```bash
+docker compose -f compose.dev.yaml down
+```
+
+---
+
+### Production
+
+Production uses:
+
+* multi-stage `Dockerfile`
+* `compose.prod.yaml`
+* compiled JavaScript
+* production dependencies only
+* no source bind mounts
+
+Flow:
+
+```text
+Source Code
+  ↓
+Build Stage
+  ↓
+TypeScript Compiler
+  ↓
+dist/
+  ↓
+Production Stage
+  ↓
+Production Image
+  ↓
+node dist/app.js
+```
+
+Start:
+
+```bash
+docker compose -f compose.prod.yaml up --build -d
+```
+
+View logs:
+
+```bash
+docker compose -f compose.prod.yaml logs -f
+```
+
+Stop:
+
+```bash
+docker compose -f compose.prod.yaml down
+```
+
+---
+
+## Environment Model
+
+```text
+Development
+    ↓
+Local Test
+    ↓
+CI
+    ↓
+Production Image
+    ↓
+Staging
+    ↓
+Production
+```
+
+Development prioritizes fast feedback and uses bind mounts.
+
+CI builds and tests a fixed Git revision without relying on
+developer workstation files.
+
+Staging and Production should ideally use the same built image,
+with environment-specific configuration supplied externally.
