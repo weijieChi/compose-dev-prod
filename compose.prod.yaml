@@ -1,0 +1,234 @@
+# ==========================================================
+# Project 06 - Production Compose
+# ==========================================================
+#
+# 這份 Compose 專門負責 Production 執行環境。
+#
+# Development 使用：
+#
+# compose.dev.yaml
+#
+# Production 使用：
+#
+# compose.prod.yaml
+#
+#
+# Development：
+#
+# Host Source
+#      ↓ bind mount
+# Container
+#      ↓
+# tsx watch
+#
+#
+# Production：
+#
+# Source Code
+#      ↓
+# docker build
+#      ↓
+# Production Image
+#      ↓
+# Container
+#      ↓
+# node dist/app.js
+#
+#
+# Production 不使用：
+#
+# - source bind mount
+# - tsx watch
+# - TypeScript runtime
+# - Host node_modules
+#
+# Container 執行內容完全由 Production Image 決定。
+#
+# ==========================================================
+
+
+services:
+
+  # --------------------------------------------------------
+  # Production API Service
+  # --------------------------------------------------------
+  api:
+
+    # ------------------------------------------------------
+    # Build Production Image
+    # ------------------------------------------------------
+    #
+    # context:
+    #
+    # 使用目前 Project 根目錄作為 Docker build context。
+    #
+    # dockerfile:
+    #
+    # 使用正式環境的 Dockerfile。
+    #
+    # 這份 Dockerfile 內包含：
+    #
+    # build stage
+    #      ↓
+    # npm run build
+    #      ↓
+    # dist/
+    #
+    # production stage
+    #      ↓
+    # production dependencies
+    #      ↓
+    # node dist/app.js
+    #
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+
+    # ------------------------------------------------------
+    # Image Name
+    # ------------------------------------------------------
+    #
+    # 指定 Compose build 完成後的 Image 名稱。
+    #
+    # 如果沒有設定 image，
+    # Compose 也會自動產生自己的 Image 名稱。
+    #
+    # 明確指定後比較容易辨識：
+    #
+    # docker image ls
+    #
+    image: compose-dev-prod:prod
+
+
+    # ------------------------------------------------------
+    # Container Name
+    # ------------------------------------------------------
+    #
+    # 固定 Container 名稱，
+    # 方便這個教學專案觀察與操作。
+    #
+    # 正式大型環境通常不一定需要 container_name，
+    # 因為 Compose 本身會自動管理名稱。
+    #
+    # 這裡主要為了學習方便。
+    #
+    container_name: compose-dev-prod-prod
+
+
+    # ------------------------------------------------------
+    # Init Process
+    # ------------------------------------------------------
+    #
+    # 使用簡單 init process：
+    #
+    # - 協助 signal forwarding
+    # - 回收 child process
+    #
+    # Production 現在是直接：
+    #
+    # node dist/app.js
+    #
+    # process tree 已經比 Development 簡單，
+    # 但保留 init: true 仍然沒有問題。
+    #
+    init: true
+
+
+    # ------------------------------------------------------
+    # Environment Variables
+    # ------------------------------------------------------
+    #
+    # Dockerfile 已經有：
+    #
+    # ENV NODE_ENV=production
+    #
+    # Compose 再明確指定一次，
+    # 主要是讓 Production 環境設定
+    # 可以直接從 compose.prod.yaml 看出來。
+    #
+    environment:
+      NODE_ENV: production
+
+      # Express Application 使用的 Container port。
+      PORT: "3000"
+
+
+    # ------------------------------------------------------
+    # Port Mapping
+    # ------------------------------------------------------
+    #
+    # 格式：
+    #
+    # "Host Port:Container Port"
+    #
+    # Ubuntu VM：
+    #
+    # localhost:3000
+    #
+    #      ↓
+    #
+    # Production Container：
+    #
+    # 3000
+    #
+    ports:
+      - "3000:3000"
+
+
+    # ------------------------------------------------------
+    # Restart Policy
+    # ------------------------------------------------------
+    #
+    # unless-stopped：
+    #
+    # Container 如果因程式錯誤、Docker daemon restart、
+    # Host reboot 等原因停止，
+    # Docker 會嘗試重新啟動。
+    #
+    # 但如果是管理者主動停止：
+    #
+    # docker stop
+    #
+    # 或：
+    #
+    # docker compose stop
+    #
+    # 就不會一直強制把它啟動回來。
+    #
+    # 這是 Production 常見的基本設定之一。
+    #
+    # restart: unless-stopped
+
+
+    # ------------------------------------------------------
+    # 注意：Production 沒有 volumes
+    # ------------------------------------------------------
+    #
+    # Development 有：
+    #
+    # volumes:
+    #   - .:/app
+    #
+    # Production 故意完全沒有。
+    #
+    # 原因：
+    #
+    # Production Container 執行的程式，
+    # 必須來自 docker build 建立出的固定 Image。
+    #
+    # 不允許 Host source code：
+    #
+    # Host ./src
+    #      ↓
+    # 修改 Production Container
+    #
+    # Application 更新必須：
+    #
+    # 修改 source
+    #      ↓
+    # docker build
+    #      ↓
+    # new image
+    #      ↓
+    # new container
