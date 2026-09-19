@@ -1,0 +1,86 @@
+# ==========================================================
+# Node.js Dependencies
+# ==========================================================
+
+# Host 上的 node_modules 不送進 Docker build context。
+#
+# 原因：
+#
+# 1. Container 應該自己執行 npm ci 建立 dependencies。
+# 2. Host 與 Container 的作業系統可能不同。
+# 3. 某些 npm package 可能包含 OS / CPU 相關的 binary。
+#
+# 例如：
+#
+# Host node_modules
+#        ❌
+#        │
+#        ▼
+# Container
+#
+# 不應直接把 Host 的 dependencies 複製進 Container。
+node_modules/
+
+
+# ==========================================================
+# TypeScript Build Output
+# ==========================================================
+
+# dist/ 可以透過 npm run build 重新產生。
+#
+# Development Image 目前也不需要 Host 已經編譯好的 dist。
+dist/
+
+
+# ==========================================================
+# Git
+# ==========================================================
+
+# Git repository 本身不需要放進 Docker Image。
+#
+# Container 執行 Application 不需要：
+#
+# .git/
+# Git commit history
+# Git object database
+.git/
+.gitignore
+
+
+# ==========================================================
+# Docker / Compose Files
+# ==========================================================
+
+# Dockerfile 本身不需要被 COPY 進 Image。
+Dockerfile
+Dockerfile.*
+compose*.yaml
+compose*.yml
+
+
+# ==========================================================
+# Environment / Secret
+# ==========================================================
+
+# 避免不小心把本機的環境變數或 Secret
+# COPY 到 Docker Image。
+.env
+.env.*
+
+
+# ==========================================================
+# Test / Log Output
+# ==========================================================
+
+coverage/
+test-results/
+*.log
+npm-debug.log*
+
+
+# ==========================================================
+# Editor / OS
+# ==========================================================
+
+.vscode/
+.DS_Store
