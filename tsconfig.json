@@ -1,0 +1,57 @@
+{
+  "compilerOptions": {
+    // ======================================================
+    // JavaScript / Node.js 執行環境
+    // ======================================================
+    // 使用 Node.js 現代 ESM 模組系統。
+    //
+    // 搭配 package.json：
+    //
+    // "type": "module"
+    //
+    // 可以使用：
+    //
+    // import express from "express";
+    "module": "NodeNext",
+    // 依照 Node.js 的方式解析 import。
+    "moduleResolution": "NodeNext",
+    // 編譯成現代 JavaScript。
+    //
+    // Node.js 24 可以直接執行這個等級的 JavaScript。
+    "target": "ES2022",
+    // ======================================================
+    // Source / Build Output
+    // ======================================================
+    // TypeScript 原始碼放在 src/。
+    "rootDir": "./src",
+    // 編譯完成的 JavaScript 放進 dist/。
+    "outDir": "./dist",
+    // ======================================================
+    // Type Checking
+    // ======================================================
+    // 開啟 TypeScript 嚴格型別檢查。
+    //
+    // 新專案通常建議開啟。
+    "strict": true,
+    // 讓 CommonJS 套件與 ES Module import 使用上更方便。
+    "esModuleInterop": true,
+    // 不花時間檢查 node_modules 裡第三方套件自己的型別檔。
+    "skipLibCheck": true,
+    // 載入 Node.js 提供的 TypeScript 型別。
+    "types": [
+      "node"
+    ]
+  },
+  // ========================================================
+  // Compiler Input
+  // ========================================================
+  // 只編譯 src 內的 TypeScript。
+  "include": [
+    "src/**/*.ts"
+  ],
+  // 不需要再次處理 dependencies 與 build output。
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
